@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>vibe Ticketshop – Vorverkauf</title>
+<style>
+:root{
+  --yellow:#fdcc06;
+  --green:#008932;
+  --text-primary:#000;
+  --text-secondary:#1f1f1f;
+  --text-tertiary:#595959;
+  --border:#e4e4e7;
+  --border-secondary:#d5d5d5;
+  --bg-elevated:#fff;
+  --bg-fill:#fafafa;
+  --bg-label:#f0f0f0;
+  --bg-darklabel:#1d1d1d;
+  --neutrals-5:#595959;
+  --r-md:6px;
+  --r-lg:8px;
+  --shadow:0 12px 42px -4px rgba(142,142,142,.26);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%;overflow:hidden}
+body{
+  background:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,"Helvetica Neue",Arial,sans-serif;
+  color:var(--text-primary);
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit}
+.ic{display:block}
+
+/* ============ Layout ============ */
+.app{display:flex;height:100vh;width:100vw;background:#fff}
+.panel{width:555px;flex:none;display:flex;flex-direction:column;background:#fff;overflow-y:auto;overscroll-behavior:contain}
+.panel::-webkit-scrollbar{width:6px}
+.panel::-webkit-scrollbar-thumb{background:#e0e0e0;border-radius:3px}
+.slider{width:16px;flex:none;background:#fff;display:flex;justify-content:center;align-items:center;cursor:col-resize;user-select:none;touch-action:none}
+.slider i{width:4px;height:50px;border-radius:2px;background:#d9d9d9}
+.slider:hover i,.slider.drag i{background:#b5b5b5}
+.map{flex:1;background:var(--bg-label);border-left:1px solid var(--border-secondary);position:relative;overflow:hidden}
+body.mobile .app{flex-direction:column}
+body.mobile .panel{width:100%;flex:1}
+body.mobile .map{flex:none;height:42vh;border-left:0;border-bottom:1px solid var(--border-secondary)}
+body.mobile .slider{width:100%;height:16px;cursor:row-resize}
+body.mobile .slider i{width:60px;height:4px;border-radius:2px}
+
+/* ============ Map ============ */
+.zoom{position:absolute;right:30px;top:30px;width:43px;display:flex;flex-direction:column;gap:4px;z-index:2}
+.zoom button{width:43px;height:43px;background:#fff;border:1px solid var(--border-secondary);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.canvas{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.mapshot{position:relative;width:829px;height:709px;transition:transform .25s ease}
+.mapshot img{position:absolute;left:-38.96%;top:0;width:138.96%;height:100%;max-width:none}
+.mapshot .ph{width:100%;height:100%;background:repeating-linear-gradient(45deg,#e9e9ec 0 14px,#e3e3e7 14px 28px)}
+.mapshot .mapsvg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.mapshot.locked{filter:grayscale(1) opacity(.45)}
+.tooltip{position:absolute;left:240px;top:356px;width:69px;height:36px;display:flex;align-items:flex-end;justify-content:center}
+.tooltip span{background:var(--text-secondary);border:1px solid var(--text-secondary);border-radius:var(--r-md);padding:8px 16px;font-size:14px;font-weight:500;line-height:20px;color:#fff;white-space:nowrap}
+.seatdot{position:absolute;width:17px;height:17px;top:397px}
+.seatdot .circle{width:17px;height:17px;border-radius:50%;background:var(--green)}
+.seatdot b{position:absolute;left:2px;top:4px;font-size:6px;color:#fff;font-weight:700;line-height:normal}
+.maphint{position:absolute;left:50%;bottom:32px;transform:translateX(-50%);background:rgba(255,255,255,.92);border:1px solid var(--border-secondary);border-radius:var(--r-md);padding:10px 14px;font-size:12px;color:var(--text-tertiary)}
+
+/* ============ Ticketshop ============ */
+.chiprow{background:var(--bg-elevated);display:flex;align-items:center}
+.chips{background:var(--bg-elevated);display:flex;gap:12px;align-items:center;padding:24px;flex-wrap:nowrap;flex:1;overflow-x:auto;overflow-y:visible;scrollbar-width:none;scroll-behavior:smooth}
+.chips::-webkit-scrollbar{display:none}
+.chipmore{width:33px;height:33px;margin-right:24px;border:1px solid var(--border-secondary);border-radius:var(--r-md);background:#fff;align-items:center;justify-content:center;flex:none;cursor:pointer;display:none}
+.chipmore.show{display:flex}
+.chips.menuopen{overflow:visible}
+.chip.open,.chip.active{border-color:var(--text-primary)}
+.chipmenu{position:absolute;top:44px;left:0;min-width:160px;background:#fff;border:1px solid var(--border-secondary);border-radius:var(--r-lg);box-shadow:var(--shadow);z-index:10;overflow:hidden}
+.chipmenu button{display:block;width:100%;text-align:left;background:#fff;border:0;padding:10px 12px;font-size:14px;cursor:pointer}
+.chipmenu button:hover{background:var(--bg-fill)}
+.chipmenu button.sel{font-weight:700}
+.chip{position:relative;border:1px solid var(--border);border-radius:9999px;padding:8px 12px;font-size:14px;color:var(--text-primary);white-space:nowrap;background:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:10px;flex:none}
+.chip.sec{border-color:var(--border-secondary)}
+.chip:hover{border-color:#bdbdbd}
+
+.countdown{background:var(--bg-label)}
+.countdown h3{margin:0;padding:24px 24px 0;font-size:18px;font-weight:700;color:var(--text-secondary)}
+.countdown .tiles{display:flex;gap:12px;padding:12px 24px 24px}
+.tile{flex:1;background:var(--bg-darklabel);border-radius:8px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#fff}
+.tile b{font-size:18px;letter-spacing:-.45px;font-variant-numeric:tabular-nums;line-height:1}
+.tile span{font-size:12px;line-height:1}
+
+.infobar{background:var(--bg-darklabel);display:flex;gap:12px;align-items:center;justify-content:center;padding:24px 16px}
+.infobar p{margin:0;font-size:16px;color:#fff;text-align:center}
+
+.series{background:#fff;padding:24px 24px 0;font-size:18px;font-weight:700;color:var(--text-secondary)}
+.evhead{background:#fff;display:flex;justify-content:space-between;align-items:flex-start;gap:24px;padding:24px 24px 8px}
+.evhead .t{font-size:18px;font-weight:700;color:var(--text-secondary);line-height:1.15}
+.evhead .s{font-size:12px;color:var(--text-tertiary);margin-top:8px;line-height:1.1}
+.evhead .right{text-align:right}
+.venue{background:#fff;padding:0 24px 24px;font-size:12px;color:var(--text-tertiary)}
+.descwrap{position:relative;background:#fff;height:55px;overflow:hidden;flex:none}
+.descwrap p{margin:0;padding:12px 24px 24px;font-size:12px;line-height:1.35;color:var(--text-secondary)}
+.descwrap .fade{position:absolute;left:0;right:0;bottom:0;height:55px;background:linear-gradient(1deg,#fff 20.87%,rgba(255,255,255,0) 92.22%)}
+.more{background:#fff;padding:12px 24px 24px}
+.more a{font-size:16px;color:var(--text-secondary);text-decoration:underline;cursor:pointer}
+
+.empty{background:#fff;flex:1;min-height:340px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:0 24px 80px;text-align:center}
+.empty p{margin:0;font-size:18px;font-weight:700;width:345px;max-width:100%;line-height:1.2}
+.empty .mark{width:48.235px;height:41px;display:flex;align-items:center;justify-content:center}
+.ticketanim{width:100%;height:100%;overflow:visible}
+.ticketanim .trace{fill:none;stroke:#e0e0e0;stroke-width:9;stroke-miterlimit:10;stroke-dasharray:788 790;stroke-dashoffset:789;animation:draw_0 3200ms infinite,fadeStroke 3200ms infinite}
+.ticketanim .draw{fill:none;stroke:#624de0;stroke-width:9;stroke-miterlimit:10;stroke-dasharray:788 790;stroke-dashoffset:789;animation:draw_1 3200ms infinite,fadeStroke 3200ms infinite}
+@keyframes fadeStroke{0%{stroke-opacity:1}80%{stroke-opacity:1}100%{stroke-opacity:0}}
+@keyframes draw_0{9.375%{stroke-dashoffset:789}39.375%{stroke-dashoffset:0}100%{stroke-dashoffset:0}}
+@keyframes draw_1{35.625%{stroke-dashoffset:789}65.625%{stroke-dashoffset:0}100%{stroke-dashoffset:0}}
+
+.footerblock{background:var(--bg-elevated);display:flex;justify-content:center;gap:20px;padding:12px 24px 24px;flex:none;position:sticky;bottom:0;z-index:4}
+.footerblock.tight{padding:0 24px;bottom:76px}
+.btn{height:40px;border-radius:var(--r-md);border:0;font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;flex:1;padding:8px 16px}
+.btn.primary{background:var(--yellow);color:#000}
+.btn.primary:hover{background:#eec106}
+.btn.secondary{background:#fff;border:1px solid #d9d9d9;color:#18181b;box-shadow:var(--shadow)}
+.btn.ghost{background:#fff;border:1px solid var(--border-secondary);color:#000}
+.btn.lg{height:44px;padding:8px 32px;flex:none}
+.btn:disabled{background:var(--bg-fill);color:var(--text-tertiary);border:1px solid var(--border-secondary);box-shadow:none;cursor:default}
+
+.sechead{background:#fff;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px}
+.sechead .h{font-size:18px;font-weight:700}
+.tag{display:inline-flex;align-items:center;gap:4px;background:var(--green);border-radius:176px;padding:4px 8px}
+.tag span{font-size:12px;color:#fafafa;white-space:nowrap}
+.cathead{background:var(--bg-fill);display:flex;align-items:center;gap:12px;padding:12px 24px}
+.cathead .dot{width:10px;height:10px;border-radius:50%;background:var(--green);flex:none}
+.cathead b{font-size:16px;color:var(--text-secondary)}
+.seatrow{background:var(--bg-elevated);display:flex;padding:24px;border:0;width:100%;text-align:left;cursor:pointer}
+.seatrow:hover{background:var(--bg-fill)}
+.seatrow .inner{display:flex;justify-content:space-between;align-items:flex-start;width:100%;gap:16px}
+.seatrow .l b{display:block;font-size:16px;color:var(--text-secondary)}
+.seatrow .l span{display:block;font-size:12px;color:var(--text-tertiary);margin-top:4px}
+.seatrow .l .catlabel{margin-top:12px}
+.seatrow .r{max-width:186px;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.seatrow .r b{font-size:16px;color:var(--text-secondary)}
+.seatrow .r span.sub{font-size:12px;color:var(--text-tertiary);text-align:right}
+.seatrow .r .tag{margin-top:12px}
+.seatrow.locked{opacity:.55;cursor:not-allowed}
+.cathead .cattag{margin-left:auto}
+
+/* Detailseite */
+.hero{background:#fff;padding:24px;display:flex;align-items:center;justify-content:center}
+.pic{width:507px;max-width:100%;height:200px;background:var(--neutrals-5);border-radius:8px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start}
+.iconbtn{width:36px;height:36px;background:#fff;border:1px solid #d9d9d9;border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);cursor:pointer}
+.abouthead{background:var(--bg-elevated);padding:12px 24px 0;font-size:16px;font-weight:700;color:var(--text-secondary)}
+.abouttext{background:var(--bg-elevated);padding:12px 24px 24px;font-size:14px;line-height:1.45;color:var(--text-secondary)}
+.infoblock{background:#fff;border-top:1px dashed var(--border-secondary);border-bottom:1px dashed var(--border-secondary);padding:24px;display:flex;flex-direction:column;gap:20px}
+.infoblock.venueblock{gap:4px}
+.infoitem{display:flex;flex-direction:column;gap:4px}
+.infoitem .k{font-size:14px;color:var(--text-tertiary)}
+.infoitem b{font-size:16px;font-weight:700;color:var(--text-secondary)}
+.infoitem .t{font-size:12px;color:var(--text-tertiary)}
+.badgerow{background:#fff;padding:12px 24px;display:flex;gap:4px;align-items:center}
+.platzhead{background:var(--bg-elevated);display:flex;align-items:center;gap:4px;padding:24px 0 12px 24px}
+.platzhead p{margin:0;font-size:14px;color:var(--text-tertiary)}
+.cardwrap{background:#fff;padding:12px 24px}
+.cardwrap.last{padding:12px 24px 24px}
+.tcard{border:1px solid var(--border-secondary);border-radius:var(--r-lg);padding:24px;display:flex;flex-direction:column;gap:16px;background:#fff;transition:opacity .2s,transform .2s}
+.tcard.removed{opacity:0;transform:translateY(-6px)}
+.tcard .top{display:flex;gap:16px;align-items:flex-start;justify-content:space-between}
+.tcard .top b{font-size:16px;color:var(--text-secondary)}
+.tcard .top .del{background:none;border:0;cursor:pointer;padding:0}
+.tcard .pill{align-self:flex-start;border:1px solid var(--border-secondary);border-radius:var(--r-lg);padding:8px 12px;display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;background:#fff;position:relative}
+.tcard .pill span{font-size:14px;color:var(--text-primary)}
+.tcard .hint{font-size:12px;color:var(--text-tertiary);line-height:1.25}
+.pricemenu{position:absolute;top:44px;left:0;min-width:200px;background:#fff;border:1px solid var(--border-secondary);border-radius:var(--r-lg);box-shadow:var(--shadow);z-index:5;overflow:hidden}
+.pricemenu button{display:block;width:100%;text-align:left;background:#fff;border:0;padding:10px 12px;font-size:14px;cursor:pointer}
+.pricemenu button:hover{background:var(--bg-fill)}
+.simhead{background:#fff;padding:24px 24px 0;font-size:16px;font-weight:700;color:var(--text-secondary)}
+.simcards{background:#fff;display:flex;gap:28px;align-items:center;padding:24px;flex-wrap:wrap}
+.simcard{width:151px;display:flex;flex-direction:column;gap:8px;cursor:pointer}
+.simcard .img{height:117px;border-radius:8px;background:var(--neutrals-5)}
+.simcard b{font-size:16px;color:var(--text-secondary)}
+.simcard span{font-size:14px;color:var(--text-tertiary)}
+.summary{background:var(--bg-elevated);border-top:1px solid var(--border-secondary);display:flex;justify-content:space-between;padding:24px}
+.summary .k{font-size:12px;color:var(--text-tertiary)}
+.summary .v{font-size:18px;font-weight:700;color:var(--text-secondary);margin-top:4px}
+.fine{background:#fff;padding:0 24px 24px;text-align:center;font-size:12px;color:var(--text-tertiary)}
+
+/* Modals */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:60;padding:24px;animation:fadein .18s ease}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+.modal{background:var(--bg-elevated);border-radius:var(--r-lg);width:629px;max-width:100%;overflow:hidden;box-shadow:0 12px 42px -4px rgba(0,0,0,.2);display:flex;flex-direction:column;gap:24px}
+body.mobile .modal{width:390px}
+.mhead{display:flex;align-items:center;justify-content:space-between;padding:24px 24px 0;gap:12px}
+.mhead h4{margin:0 auto;font-size:16px;font-weight:700;text-align:center}
+.mhead .x{width:40px;height:36px;border:1px solid var(--border-secondary);border-radius:var(--r-md);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.mbody{padding:0 24px;display:flex;flex-direction:column;gap:24px}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label{font-size:14px}
+.field input{height:40px;border:1px solid var(--border-secondary);border-radius:var(--r-md);background:var(--bg-fill);padding:8px 12px;font-size:14px;font-family:inherit}
+.field input::placeholder{color:var(--text-tertiary)}
+.field input.error{border-color:#d4380d}
+.errmsg{font-size:12px;color:#d4380d}
+.legal{font-size:12px;color:var(--text-tertiary);line-height:1.35;margin:0}
+.legal a{color:#1677ff;text-decoration:none;cursor:pointer}
+.mfoot{background:var(--bg-fill);border-top:1px solid var(--border-secondary);display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding:16px 24px}
+body.mobile .mfoot{flex-direction:column-reverse;background:#fff}
+body.mobile .mfoot .btn{width:100%;flex:none;height:40px;font-size:16px}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--bg-darklabel);color:#fff;padding:14px 20px;border-radius:8px;font-size:14px;z-index:80;animation:fadein .2s ease}
+
+/* Annotationen */
+.anno{display:none;margin:0 24px 12px;border-left:3px solid #624de0;background:#f3f1fe;color:#3b3160;font-size:12px;line-height:1.45;padding:10px 12px;border-radius:0 6px 6px 0}
+body.anno-on .anno{display:block}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important}}
+
+/* Aktionscode-Leiste (Frame 1000001917) */
+.codebar{background:var(--bg-label);display:flex;gap:12px;align-items:center;justify-content:center;padding:24px 16px;cursor:text}
+.codebar .txt{font-size:14px;color:var(--text-primary)}
+.codebar .txt b{font-weight:700}
+.codebar input{border:0;background:transparent;font-family:inherit;font-size:14px;color:var(--text-primary);outline:none;width:180px}
+.codebar input::placeholder{color:var(--text-primary)}
+.codebar .rm{background:none;border:0;cursor:pointer;padding:0;display:flex}
+.codeerror{background:#ff4d4f;display:flex;align-items:center;justify-content:center;padding:4px}
+.codeerror p{margin:0;font-size:12px;color:#fff}
+</style>
+</head>
+<body>
+
+<div class="app" id="app"></div>
+<div id="layer"></div>
+
+<script>
+/* Alle Texte stammen 1:1 aus den Figma-Frames der Sections
+   „86c52b0xm – Vorverkauf“, „86c9ryvh4 – Base“ und „86c9ryvh4 – Mitgliedercode“. */
+
+const FB = {
+  ticketMark:'<svg viewBox="0 0 48 41" width="48" height="41" fill="none" stroke="#624de0" stroke-width="2.4" stroke-linejoin="round"><path d="M3 13.5 41 3l4 12a5.5 5.5 0 0 0 0 11l-4 12L3 27.5a7 7 0 0 0 0-14Z"/></svg>',
+  ticket:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="1.8"><path d="M3 9.5V7a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2.5a2.5 2.5 0 0 0 0 5V17a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2.5a2.5 2.5 0 0 0 0-5Z"/></svg>',
+  infoWhite:'<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="#fff" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
+  info:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#595959" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
+  unlock:'<svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="#1f1f1f" stroke-width="1.6"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>',
+  check:'<svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="#008932" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>',
+  xmark:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#1f1f1f" stroke-width="1.8"><path d="m6 6 12 12M18 6 6 18"/></svg>',
+  arrowLeft:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#1f1f1f" stroke-width="1.8"><path d="M15 6 9 12l6 6"/></svg>',
+  rotate3d:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="1.6"><path d="M12 5c4.97 0 9 1.79 9 4s-4.03 4-9 4-9-1.79-9-4 4.03-4 9-4Z"/><path d="M3 9v6c0 2.21 4.03 4 9 4s9-1.79 9-4V9"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#1f1f1f" stroke-width="1.6"><path d="M4 7h16M10 7V5h4v2M6 7l1 13h10l1-13"/></svg>',
+  chevron:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#000" stroke-width="1.8"><path d="m6 9 6 6 6-6"/></svg>',
+  zoomOut:'<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#1f1f1f" stroke-width="1.8"><path d="M5 12h14"/></svg>',
+  zoomIn:'<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#1f1f1f" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>',
+  close:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#000" stroke-width="1.8"><path d="m6 6 12 12M18 6 6 18"/></svg>',
+  minus:'<svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="#1f1f1f" stroke-width="1.8"><path d="M5 12h14"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="#1f1f1f" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>',
+  chipChevron:'<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#000" stroke-width="1.8"><path d="m6 9 6 6 6-6"/></svg>',
+  chipPlus:'<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#000" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>',
+  chipMore:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#000" stroke-width="1.8"><path d="m9 6 6 6-6 6"/></svg>'
+};
+function ic(key, fbKey, size){
+  let svg = FB[key] || FB[fbKey] || '';
+  if(!svg) return '';
+  if(size) svg = svg.replace(/width="[\d.]+" height="[\d.]+"/, `width="${size}" height="${size}"`);
+  return svg.replace('<svg ', '<svg class="ic" ');
+}
+
+/* Kategorien wie im Base-Frame 15531:92453 */
+const CATEGORIES = [
+  {id:'c1',   name:'Kategorie 1',       color:'#7ed957', tribune:'Haupttribüne', seat:'A3, Reihe 5, Sitz 490', from:89, vvOnly:true},
+  {id:'prem', name:'Kategorie Premium', color:'#ffb020', tribune:'Haupttribüne', seat:'A3, Reihe 5, Sitz 490', from:99, vvOnly:true},
+  {id:'c3',   name:'Kategorie 3',       color:'#2ec7c0', tribune:'Haupttribüne', seat:'A3, Reihe 5, Sitz 490', from:69, vvOnly:false},
+  {id:'c4',   name:'Kategorie 4',       color:'#2f6fed', tribune:'Haupttribüne', seat:'A3, Reihe 5, Sitz 490', from:59, vvOnly:false}
+];
+
+/* Ticketarten laut Subpage 16840:104821 */
+const PRICES = [
+  {price:'129 € Normalpreis', value:129, hint:'Gilt für Jugendliche / Erwachsene ab 16 Jahre'},
+  {price:'99 € Ermäßigt', value:99, hint:'Gilt für Schwerbehinderte (min. GdB 50) und Begleitperson<br>(falls Kennzeichnung „B“ im Ausweis vorhanden)'},
+  {price:'0 € Kind', value:0, hint:'Gilt für Kinder bis inkl. 15 Jahre'}
+];
+
+const S = {
+  phase:'countdown',
+  mobile:window.innerWidth < 760,
+  anno:false,
+  tickets:3,
+  max:3,
+  modal:null,
+  code:null,          // null | 'DIESDAS' … eingelöster Code
+  codeError:false,
+  codeOpen:false,
+  cat:'c1',
+  zoom:1,
+  zoomSet:false,
+  panelW:555,
+  openChip:null,
+  back:'running',
+  catFilter:null,
+  mapH:null,
+  openPrice:null,
+  seats:[
+    {id:1, cat:'c1', vvOnly:true, label:'Tribüne Block A16, Reihe 5, Sitz 490', ...PRICES[0]},
+    {id:2, cat:'c1', vvOnly:true, label:'Tribüne Block A16, Reihe 5, Sitz 491', ...PRICES[1]},
+    {id:3, cat:'c1', vvOnly:true, label:'Tribüne Block A16, Reihe 5, Sitz 492', ...PRICES[2]}
+  ]
+};
+let presaleStart = Date.now() + 15000;
+let switched = false;
+const eligible = () => S.code !== null;
+
+/* ── Bausteine ── */
+function chipsBlock(){
+  const countMenu = S.openChip === 'count' ? `
+    <div class="chipmenu">
+      ${[1,2,3].map(n=>`<button data-count="${n}"${n===S.tickets?' class="sel"':''}>${n}</button>`).join('')}
+    </div>` : '';
+  const catMenu = S.openChip === 'cat' ? `
+    <div class="chipmenu">
+      ${CATEGORIES.map(c=>`<button data-catfilter="${c.id}"${c.id===S.catFilter?' class="sel"':''}>${c.name}</button>`).join('')}
+    </div>` : '';
+  return `
+  <div class="chiprow">
+    <div class="chips${S.openChip?' menuopen':''}">
+      <div class="chip${S.openChip==='count'?' open':''}" data-chip="count">Anzahl Tickets ${S.tickets}${ic('chipChevron',null,15)}${countMenu}</div>
+      <div class="chip sec" data-code-open>Aktionscode einfügen${ic('chipPlus',null,15)}</div>
+      <div class="chip${S.openChip==='cat'?' open':''}${S.catFilter?' active':''}" data-chip="cat">${S.catFilter ? CATEGORIES.find(c=>c.id===S.catFilter).name : 'Kategorie'}${ic('chipChevron',null,15)}${catMenu}</div>
+    </div>
+    <div class="chipmore" id="chipMore" data-chip-scroll>${ic('chipMore',null,20)}</div>
+  </div>`;
+}
+
+function codeBar(){
+  const err = S.codeError ? `<div class="codeerror"><p>ungültiger Aktionscode</p></div>` : '';
+  if(S.code){
+    return err + `
+    <div class="codebar">
+      ${ic('check',null,25)}
+      <span class="txt"><b>Aktionscodecode:</b> ${S.code}</span>
+      <button class="rm" data-code-remove>${ic('xmark',null,20)}</button>
+    </div>`;
+  }
+  if(S.codeOpen){
+    return err + `
+    <div class="codebar">
+      ${ic('unlock',null,25)}
+      <span class="txt"><b>Aktionscode:</b></span>
+      <input id="codeInput" placeholder="hier einfügen" autocomplete="off">
+    </div>`;
+  }
+  return err + `
+  <div class="codebar" data-code-open>
+    ${ic('unlock',null,25)}
+    <span class="txt"><b>Aktionscode:</b> hier einfügen</span>
+  </div>`;
+}
+
+const eventInfo = `
+<div class="series">Eventserienname</div>
+<div class="evhead">
+  <div><div class="t">Eventname</div><div class="s">Freitag, 15. Juli 2026 - Sonntag, 17. Juli 2026</div></div>
+  <div class="right"><div class="t">3 Events</div><div class="s">Bundle</div></div>
+</div>
+<div class="venue">Venue</div>
+<div class="descwrap">
+  <p>Mitten in der Eifel gelegen, ist der Nürburgring wohl Deutschlands bekannteste Rennstrecke. Die Rennen dort markieren den Start in die zweite Saisonhälfte.</p>
+  <div class="fade"></div>
+</div>
+<div class="more"><a data-event-info>Mehr über das Event erfahren →</a></div>`;
+
+function countdownBlock(){
+  const diff = Math.max(0, presaleStart - Date.now());
+  const p = n => String(n).padStart(2,'0');
+  const d = Math.floor(diff/86400000), h = Math.floor(diff/3600000)%24,
+        m = Math.floor(diff/60000)%60, s = Math.floor(diff/1000)%60;
+  return `
+  <div class="countdown" id="countdown">
+    <h3>Vorverkauf startet in</h3>
+    <div class="tiles">
+      <div class="tile"><b>${p(d)}</b><span>Tage</span></div>
+      <div class="tile"><b>${p(h)}</b><span>Stunden</span></div>
+      <div class="tile"><b>${p(m)}</b><span>Minuten</span></div>
+      <div class="tile"><b>${p(s)}</b><span>Sekunden</span></div>
+    </div>
+  </div>`;
+}
+
+const infobar = `<div class="infobar">${ic('infoWhite',null,23)}<p>Maximal 3 Tickets in dieser Phase buchbar.</p></div>`;
+
+const ticketAnim = `
+<svg class="ticketanim" viewBox="538 270 271 190" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+  <path class="trace" d="M772.5,347c-6.2-14-2.4-29.5,8.4-35.8c1.1-0.6,1.4-2.2,0.8-3.7l-8.5-19.1c-3.4-7.6-11.2-11.4-17.5-8.6l-201,89.5c-6.3,2.8-8.7,11.2-5.3,18.8c0,0,6.4,14.3,8.5,19.1c0.6,1.4,2,2.2,3.3,1.8c12-3.8,26,3.7,32.3,17.7s2.4,29.5-8.4,35.8c-1.1,0.6-1.4,2.2-0.8,3.7l8.5,19.1c3.4,7.6,11.2,11.4,17.5,8.6l201-89.5c6.3-2.8,8.7-11.2,5.3-18.8l-8.5-19.1c-0.6-1.4-2-2.2-3.3-1.8C792.8,368.5,778.7,361,772.5,347z"/>
+  <path class="draw" d="M772.5,347c-6.2-14-2.4-29.5,8.4-35.8c1.1-0.6,1.4-2.2,0.8-3.7l-8.5-19.1c-3.4-7.6-11.2-11.4-17.5-8.6l-201,89.5c-6.3,2.8-8.7,11.2-5.3,18.8c0,0,6.4,14.3,8.5,19.1c0.6,1.4,2,2.2,3.3,1.8c12-3.8,26,3.7,32.3,17.7s2.4,29.5-8.4,35.8c-1.1,0.6-1.4,2.2-0.8,3.7l8.5,19.1c3.4,7.6,11.2,11.4,17.5,8.6l201-89.5c6.3-2.8,8.7-11.2,5.3-18.8l-8.5-19.1c-0.6-1.4-2-2.2-3.3-1.8C792.8,368.5,778.7,361,772.5,347z"/>
+</svg>`;
+
+function empty(text){
+  return `<div class="empty"><div class="mark">${ticketAnim}</div><p>${text}</p></div>`;
+}
+
+function catBlock(c){
+  return `
+  <div class="cathead">
+    <span class="dot" style="background:${c.color}"></span><b>${c.tribune}</b>
+  </div>
+  <button class="seatrow" data-select="${c.id}">
+    <div class="inner">
+      <div class="l">
+        <b>${c.seat}</b>
+        <span>${c.name}</span>
+      </div>
+      <div class="r">
+        <b>Ab ${c.from}€</b><span class="sub">Erwachsene ab 16 Jahren</span>
+        <span class="tag">${ic('rowTicket','ticket',16)}</span>
+      </div>
+    </div>
+  </button>`;
+}
+
+function tcard(seat, last){
+  const menu = S.openPrice === seat.id ? `
+    <div class="pricemenu">
+      ${PRICES.map((p,i)=>`<button data-price="${seat.id}|${i}">${p.price}</button>`).join('')}
+    </div>` : '';
+  return `
+  <div class="cardwrap${last?' last':''}">
+    <div class="tcard">
+      <div class="top"><b>${seat.label}</b>
+        <button class="del" data-del="${seat.id}">${ic('trash',null,16)}</button></div>
+      <div class="pill" data-price-open="${seat.id}"><span>${seat.price}</span>${ic('chevron',null,14)}${menu}</div>
+      <div class="hint">${seat.hint}</div>
+    </div>
+  </div>`;
+}
+
+/* ── Panel ── */
+function panel(){
+  switch(S.phase){
+    case 'announce':
+      return chipsBlock() + eventInfo + empty('Der Vorverkauf für dieses Event startet bald …')
+        + `<div class="anno">Annotation: optional – E-Mail über Modal eingeben. Gilt nur für eingeloggte Mitglieder, welche am Vorverkauf teilnehmen können.</div>
+           <div class="footerblock"><button class="btn primary" data-open="notify">Benachrichtigt werden</button></div>`;
+
+    case 'countdown':
+      return chipsBlock() + (S.codeOpen || S.code || S.codeError ? codeBar() : '') + countdownBlock() + eventInfo
+        + empty('Der Vorverkauf für dieses Event startet bald …')
+        + `<div class="footerblock tight"><button class="btn secondary" data-code-open>Aktionscode hinzufügen</button></div>
+           <div class="footerblock"><button class="btn primary" data-open="notify">Für Vorverkauf anmelden</button></div>`;
+
+    case 'signup':
+      return chipsBlock() + (S.codeOpen || S.code || S.codeError ? codeBar() : '') + eventInfo
+        + empty('Der Vorverkauf für dieses Event startet …')
+        + `<div class="anno">Annotation: „Aktionscode hinzufügen“ ausblenden, wenn bei Admin UI nicht ausgewählt. „Für Vorverkauf anmelden“ ausblenden, wenn nur Aktionscode ausgewählt und „Aktionscode hinzufügen“ Color.</div>
+           <div class="footerblock tight"><button class="btn secondary" data-code-open>Aktionscode hinzufügen</button></div>
+           <div class="footerblock"><button class="btn primary" data-open="notify">Für Vorverkauf anmelden</button></div>`;
+
+    case 'running':
+      return chipsBlock() + (S.codeOpen || S.code || S.codeError ? codeBar() : '') + infobar + eventInfo
+        + `<div class="sechead"><div class="h">Bestplatzwahl</div><span class="tag">${ic('tagTicket','ticket',16)}<span>Vorverkauf</span></span></div>`
+        + CATEGORIES.filter(c=>!S.catFilter || c.id===S.catFilter).map(catBlock).join('');
+
+    case 'event':
+      return `
+      <div class="hero">
+        <div class="pic"><div class="iconbtn" data-back>${ic('arrowLeft',null,16)}</div></div>
+      </div>
+      <div class="abouthead">Über das Event</div>
+      <div class="abouttext">Mitten in der Eifel gelegen, ist der Nürburgring wohl Deutschlands bekannteste Rennstrecke. Die Rennen dort markieren den Start in die zweite Saisonhälfte. Das Gastspiel in der Eifel zur besten Ferienzeit ist eines der Highlights im Kalender, beim fünften Event der Saison nimmt auch schon der Meisterschaftskampf Formen an. Gefahren wird die kurze Variante der Grand-Prix-Strecke, das verspricht viel Action im technischen Teil der AMG-Arena, beim Anbremsen der Kurzanbindung oder bei Überholmanövern aus dem Windschatten vor der NGK-Schikane.</div>
+      <div class="infoblock">
+        <div class="infoitem"><span class="k">Einlass</span><b>Freitag, 15. Juli 2026</b><span class="t">12:00 Uhr</span></div>
+        <div class="infoitem"><span class="k">Beginn</span><b>Freitag, 15. Juli 2026</b><span class="t">13:00 Uhr</span></div>
+        <div class="infoitem"><span class="k">Ende</span><b>Sonntag, 17. Juli 2026</b><span class="t">18:00 Uhr</span></div>
+      </div>
+      <div class="infoblock venueblock">
+        <div class="infoitem"><span class="k">Venue</span><b>Norisring</b><span class="t">Zeppelinstraße, 90471 Nürnberg, Deutschland</span></div>
+      </div>`;
+
+    case 'detail': {
+      const total = S.seats.reduce((a,s)=>a+s.value,0);
+      return `
+      <div class="hero">
+        <div class="pic">
+          <div class="iconbtn" data-back>${ic('arrowLeft',null,16)}</div>
+        </div>
+      </div>
+      <div class="badgerow"><span class="tag">${ic('detailTicket','ticket',16)}<span>Vorverkauf</span></span></div>
+      <div class="platzhead"><p>Plätze</p>${ic('info',null,16)}</div>
+      ${S.seats.map((s,i)=>tcard(s, i===S.seats.length-1)).join('')}
+      <div class="anno">Annotation: anzeigen, wenn andere Sitzplatztickets nicht verfügbar sind.</div>
+      <div class="simhead">Vergleichbare Tickets</div>
+      <div class="simcards">
+        <div class="simcard"><div class="img"></div><b>Tribüne A16</b><span>Reihe 5, Sitz 490</span><span>Ab 219€</span></div>
+        <div class="simcard"><div class="img"></div><b>Tribüne A16</b><span>Reihe 5, Sitz 490</span><span>Ab 219€</span></div>
+      </div>
+      <div class="summary">
+        <div><div class="k">Anzahl</div><div class="v">${S.seats.length} Tickets</div></div>
+        <div><div class="k">Gesamtpreis</div><div class="v">${total} €</div></div>
+      </div>
+      <div class="footerblock" style="padding:24px">
+        <button class="btn primary" data-cart ${S.seats.length?'':'disabled'}>In den Warenkorb</button>
+      </div>
+      <div class="fine">Tickets sind noch nicht reserviert.</div>`;
+    }
+  }
+}
+
+/* ============ Saalplan ============
+   Simulierter Saalplan „Tribüne A6" im vibe-Design, als Inline-SVG (keine
+   externen Requests). Raster pro Reihe: g = frei, o = weitere Kategorie,
+   d = nicht verfügbar, . = kein Sitz. Die erste Zeile je Block ist die
+   Reihenmarkierung „R“. Das viewBox-Raster ist so gewählt, dass die im DOM
+   liegenden Sitzpunkte 489–491 und der Preis-Tooltip exakt auf Reihe 10,
+   Sitz 5–7 sitzen. */
+const MAP_FONT = '-apple-system,BlinkMacSystemFont,Inter,Helvetica,Arial,sans-serif';
+const MAP = {cp:20.33, rp:40.66, y0:340.9, yR:300, free:'#68e0b6', cat:'#f3b13e', off:'#222', label:'#9e9e9e'};
+const BLOCK_R = {x:500.9, nums:'lr', rows:[
+  '..........dd........dd..........',
+  'dddddddddddd..dddd..ddddddggdddd',
+  'ddddddddggoo..dddo..ooggggggggdd',
+  'dddddddddddd..oooo..dddggggggggg',
+  'ddddddddggoo..oooo..oogggggggggg',
+  'ddddddddddoo..oooo..oogggggggggg',
+  'ggggggggggoo..oooo..oogggggggggg',
+  'ggggggggdddd..dddo..oogggggggggg',
+  'ddggggggddod..dddd..ooddddddddgg',
+  'ggggggggggoo........ddddgggggggg',
+  'ggggggggggoo........ddgggggggggg',
+  'ggggggggggoo........oogggggggggg',
+  'ggggggggggdd........oogggggggggg',
+  'ggggggggggdd........oogggggggggg',
+  'ggggggggggggggg..ggggggggggggggg',
+  'ddggggggggggggg..gggggdddddddddd',
+  '...gggggggggggg..gggggdddddddddd',
+  '...gggggggggggg..gggggdddddddddd',
+  '...gggggggggggg..dddggdddddddddd',
+  '...ddggggggggdd..ggddgdddddddddd'
+]};
+function mapText(x,y,txt,size){
+  return `<text x="${x}" y="${y}" font-family="${MAP_FONT}" font-size="${size}" fill="${MAP.label}" text-anchor="middle">${txt}</text>`;
+}
+function seatBlock(b){
+  let out = '';
+  b.rows.forEach((row,i)=>{
+    const y = i ? MAP.y0 + (i-1)*MAP.rp : MAP.yR;
+    let first = -1, last = -1;
+    for(let j=0; j<row.length; j++){
+      const ch = row[j];
+      if(ch === '.') continue;
+      if(first < 0) first = j;
+      last = j;
+      const x = (b.x + j*MAP.cp).toFixed(1);
+      out += ch === 'd'
+        ? `<circle cx="${x}" cy="${y.toFixed(1)}" r="2.8" fill="${MAP.off}"/>`
+        : `<circle cx="${x}" cy="${y.toFixed(1)}" r="5.9" fill="${ch === 'g' ? MAP.free : MAP.cat}"/>`;
+    }
+    if(i && first > -1){
+      const ty = (y + 4.4).toFixed(1);
+      if(b.nums.includes('l')) out += mapText((b.x + first*MAP.cp - 22.4).toFixed(1), ty, i, 10.5);
+      if(b.nums.includes('r')) out += mapText((b.x + last*MAP.cp + 23.5).toFixed(1), ty, i, 10.5);
+    }
+  });
+  return out;
+}
+function mapSvg(){
+  return `<svg class="mapsvg" viewBox="449 147 734 978" xmlns="http://www.w3.org/2000/svg">
+    <rect x="461" y="159" width="710" height="954" rx="5" fill="#fff"/>
+    ${mapText(816,210,'Tribüne A6',15.5)}
+    ${mapText(681.5,304.5,'R',11.5)}
+    ${mapText(951,304.5,'R',11.5)}
+    ${seatBlock(BLOCK_R)}
+  </svg>`;
+}
+
+function map(){
+  const zoom = `<div class="zoom">
+      <button data-zoom="-1">${ic('zoomOut',null,24)}</button>
+      <button data-zoom="1">${ic('zoomIn',null,24)}</button>
+    </div>`;
+  const locked = S.phase !== 'running' && S.phase !== 'detail';
+  const marks = !locked ? `
+      <div class="tooltip"><span>199€</span></div>
+      <div class="seatdot" style="left:251.3px"><div class="circle"></div><b>489</b></div>
+      <div class="seatdot" style="left:266px"><div class="circle"></div><b>490</b></div>
+      <div class="seatdot" style="left:280.7px"><div class="circle"></div><b>491</b></div>` : '';
+  return zoom + `
+    <div class="canvas">
+      <div class="mapshot ${locked?'locked':''}" style="transform:scale(${S.zoom})">
+        ${mapSvg()}
+        ${marks}
+      </div>
+    </div>`;
+}
+
+function fitMap(){
+  const box = document.querySelector('.map');
+  const el = document.querySelector('.mapshot');
+  if(!box || !el) return;
+  if(!S.zoomSet){
+    const z = Math.min((box.clientWidth - 24) / 829, (box.clientHeight - 24) / 709);
+    S.zoom = Math.min(1, Math.max(.4, Math.round(z * 100) / 100));
+  }
+  el.style.transform = `scale(${S.zoom})`;
+}
+
+function render(){
+  document.body.classList.toggle('mobile', S.mobile);
+  document.body.classList.toggle('anno-on', S.anno);
+  const p = `<div class="panel" id="panel" style="width:${S.mobile?'100%':S.panelW+'px'}">${panel()}</div>`;
+  const sl = `<div class="slider"><i></i></div>`;
+  const m = `<div class="map"${S.mobile && S.mapH ? ` style="height:${S.mapH}px"` : ''}>${map()}</div>`;
+  document.getElementById('app').innerHTML = S.mobile ? m + sl + p : p + sl + m;
+  if(S.codeOpen && !S.code) document.getElementById('codeInput')?.focus();
+  checkChipOverflow();
+  fitMap();
+  renderModal();
+}
+
+function renderModal(){
+  const layer = document.getElementById('layer');
+  if(!S.modal){ layer.innerHTML=''; return; }
+
+  if(S.modal === 'notify'){
+    layer.innerHTML = `
+    <div class="overlay" data-close>
+      <div class="modal">
+        <div class="mhead"><span style="width:40px"></span><h4>Event Benachrichtigung</h4>
+          <button class="x" data-close>${ic('close',null,16)}</button></div>
+        <div class="mbody">
+          <div class="field"><label for="mail">E-Mail</label>
+            <input id="mail" type="email" placeholder="E-Mail eingeben" autocomplete="email"></div>
+          <p class="legal">Mit dem Klick auf “Benachrichtigt werden” bestätigst Du, dass Du die <a>Datenschutzerklärung</a> gelesen und akzeptiert hast.</p>
+        </div>
+        <div class="mfoot">
+          <button class="btn ghost lg" data-close>Abbrechen</button>
+          <button class="btn primary lg" data-close>Benachrichtigt werden</button>
+        </div>
+      </div>
+    </div>`;
+    setTimeout(()=>document.getElementById('mail')?.focus(),40);
+  }
+}
+
+function checkChipOverflow(){
+  const row = document.querySelector('.chips');
+  const more = document.getElementById('chipMore');
+  if(!row || !more) return;
+  const overflow = row.scrollWidth - row.clientWidth > 1;
+  more.classList.toggle('show', overflow);
+}
+
+/* ── Interaktion ── */
+document.addEventListener('click', e => {
+  const t = e.target;
+
+  if(t.closest('[data-close]')){ S.modal=null; return renderModal(); }
+
+  const sel = t.closest('[data-select]');
+  if(sel){
+    S.cat = sel.dataset.select;
+    const c = CATEGORIES.find(x=>x.id===S.cat) || CATEGORIES[0];
+    S.seats = S.seats.slice(0, S.tickets);
+    while(S.seats.length < S.tickets){
+      const n = 489 + S.seats.length + 1;
+      S.seats.push({id:Date.now()+S.seats.length, cat:c.id, vvOnly:c.vvOnly,
+        label:`Tribüne Block A16, Reihe 5, Sitz ${n}`, ...PRICES[0]});
+    }
+    S.seats.forEach(s=>{ s.cat=c.id; s.vvOnly=c.vvOnly; });
+    S.phase='detail';
+    return render();
+  }
+
+  const chip = t.closest('[data-chip]');
+  if(chip){ const k = chip.dataset.chip; S.openChip = S.openChip===k ? null : k; return render(); }
+
+  const cnt = t.closest('[data-count]');
+  if(cnt){ S.tickets = Number(cnt.dataset.count); S.openChip = null; return render(); }
+
+  const cf = t.closest('[data-catfilter]');
+  if(cf){ S.catFilter = S.catFilter===cf.dataset.catfilter ? null : cf.dataset.catfilter; S.openChip = null; return render(); }
+
+  if(S.openChip && !t.closest('.chipmenu')){ S.openChip = null; render(); }
+
+  const codeToggle = t.closest('[data-code-open]');
+  if(codeToggle){
+    if(codeToggle.classList.contains('codebar')) return;   // Klick ins Feld schließt nicht
+    S.codeOpen = !S.codeOpen; S.codeError = false; return render();
+  }
+  if(t.closest('[data-code-remove]')){ S.code=null; S.codeOpen=false; S.codeError=false; return render(); }
+
+  const open = t.closest('[data-open]');
+  if(open){
+    if(open.dataset.cat) S.cat = open.dataset.cat;
+    S.modal = open.dataset.open; return renderModal();
+  }
+
+  const po = t.closest('[data-price-open]');
+  if(po){ const id = Number(po.dataset.priceOpen); S.openPrice = S.openPrice===id ? null : id; return render(); }
+
+  const pick = t.closest('[data-price]');
+  if(pick){
+    const [id,i] = pick.dataset.price.split('|');
+    Object.assign(S.seats.find(s=>String(s.id)===id), PRICES[Number(i)]);
+    S.openPrice = null; return render();
+  }
+
+  const del = t.closest('[data-del]');
+  if(del){
+    S.seats = S.seats.filter(s=>String(s.id)!==del.dataset.del);
+    S.tickets = Math.max(1, S.seats.length);
+    return render();
+  }
+
+  if(t.closest('[data-event-info]')){ S.back = S.phase; S.phase='event'; return render(); }
+
+  if(t.closest('[data-back]')){ S.phase = S.phase==='event' ? S.back : 'running'; return render(); }
+
+  if(t.closest('[data-cart]')){
+    if(S.seats.some(s=>s.vvOnly) && !eligible()){
+      S.seats = S.seats.filter(s=>!s.vvOnly);
+      return render();
+    }
+    return;
+  }
+
+  if(t.closest('[data-chip-scroll]')){
+    const row = document.querySelector('.chips');
+    if(row) row.scrollLeft += row.clientWidth * 0.6;
+    return;
+  }
+
+  const z = t.closest('[data-zoom]');
+  if(z){
+    S.zoomSet = true;
+    S.zoom = Math.min(2, Math.max(.4, S.zoom + Number(z.dataset.zoom)*0.2));
+    const el = document.querySelector('.mapshot');
+    if(el) el.style.transform = `scale(${S.zoom})`;
+    return;
+  }
+
+  if(S.openPrice !== null && !t.closest('.pricemenu')){ S.openPrice = null; render(); }
+});
+
+/* Slider: Panelbreite bzw. Kartenhöhe ziehen */
+document.addEventListener('pointerdown', e => {
+  const handle = e.target.closest('.slider');
+  if(!handle) return;
+  handle.classList.add('drag');
+  handle.setPointerCapture(e.pointerId);
+  const move = ev => {
+    if(S.mobile){
+      S.mapH = Math.min(window.innerHeight - 200, Math.max(160, ev.clientY - 8));
+      const map = document.querySelector('.map');
+      if(map) map.style.height = S.mapH + 'px';
+      fitMap();
+    } else {
+      S.panelW = Math.min(window.innerWidth - 320, Math.max(390, ev.clientX));
+      const panel = document.getElementById('panel');
+      if(panel) panel.style.width = S.panelW + 'px';
+      fitMap();
+    }
+  };
+  const up = () => {
+    handle.classList.remove('drag');
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerup', up);
+    checkChipOverflow();
+  };
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', up);
+});
+
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape' && S.modal){ S.modal=null; return renderModal(); }
+  if(e.target.id === 'codeInput'){
+    if(e.key === 'Enter'){
+      const v = e.target.value.trim().toUpperCase();
+      if(v === 'DIESDAS'){ S.code = v; S.codeOpen=false; S.codeError=false; }
+      else { S.codeError = true; }
+      render();
+    }
+    return;
+  }
+  if(e.target.tagName === 'INPUT') return;
+  const m = {'1':'announce','2':'countdown','3':'signup','4':'running','5':'detail','6':'event'};
+  if(m[e.key]){
+    if(e.key === '2'){ presaleStart = Date.now() + 15000; switched = false; }
+    S.phase = m[e.key]; return render();
+  }
+  if(e.key.toLowerCase() === 'm'){ S.mobile = !S.mobile; return render(); }
+  if(e.key.toLowerCase() === 'a'){ S.anno = !S.anno; return render(); }
+  if(e.key.toLowerCase() === 'r'){ location.reload(); }
+});
+
+window.addEventListener('resize', () => {
+  const mob = window.innerWidth < 760;
+  if(mob !== S.mobile){ S.mobile = mob; render(); }
+  else { checkChipOverflow(); fitMap(); }
+});
+
+setInterval(() => {
+  if(S.phase === 'countdown'){
+    const el = document.getElementById('countdown');
+    if(el) el.outerHTML = countdownBlock();
+    if(!switched && Date.now() >= presaleStart){ switched = true; S.phase='running'; S.codeOpen = false; S.codeError = false; render(); }
+  }
+}, 1000);
+
+render();
+</script>
+</body>
+</html>
